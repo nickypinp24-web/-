@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>บอกกุที - สุ่มอาหารตามสั่ง</title>
+<link href="https://fonts.googleapis.com/css2?family=Kanit:wght@400;600;700;900&family=Sarabun:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --red: #E8192C;
+    --orange: #FF6B00;
+    --yellow: #FFD000;
+    --green: #00C853;
+    --blue: #00AAFF;
+    --dark: #1A0A00;
+    --cream: #FFF8EE;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Kanit', sans-serif;
+    background: var(--dark);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background:
+      radial-gradient(ellipse at 20% 50%, rgba(232,25,44,0.13) 0%, transparent 60%),
+      radial-gradient(ellipse at 80% 20%, rgba(255,107,0,0.10) 0%, transparent 50%),
+      radial-gradient(ellipse at 60% 80%, rgba(255,208,0,0.06) 0%, transparent 40%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* ====== OUTER LAYOUT ====== */
+  .outer-wrap {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    min-height: 100vh;
+    padding: 28px 8px;
+    gap: 0;
+  }
+
+  /* ====== SIDE BUTTONS ====== */
+  .side-col {
+    flex-shrink: 0;
+    width: 136px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding-top: 148px;
+  }
+
+  .side-pill {
+    position: relative;
+    cursor: pointer;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .side-oval {
+    width: 118px;
+    height: 58px;
+    border-radius: 50px;
+    border: 2px solid rgba(255,248,238,0.18);
+    background: rgba(255,248,238,0.04);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 8px 10px;
+    text-align: center;
+    font-size: 0.67rem;
+    font-weight: 700;
+    color: rgba(255,248,238,0.45);
+    line-height: 1.3;
+    transition: all 0.25s;
+    backdrop-filter: blur(8px);
+  }
+  .side-pill:hover .side-oval {
+    border-color: rgba(255,248,238,0.38);
+    color: var(--cream);
+    background: rgba(255,248,238,0.07);
+    transform: scale(1.05);
+  }
+
+  /* selected states */
+  .side-pill.mode-noveg.selected .side-oval {
+    border-color: var(--green);
+    background: rgba(0,200,83,0.13);
+    color: var(--green);
+    box-shadow: 0 0 22px rgba(0,200,83,0.35);
+  }
+  .side-pill.mode-all.selected .side-oval {
+    border-color: var(--blue);
+    background: rgba(0,170,255,0.13);
+    color: var(--blue);
+    box-shadow: 0 0 22px rgba(0,170,255,0.35);
+  }
+
+  .side-check {
+    font-size: 1rem;
+    opacity: 0;
+    transition: opacity 0.2s;
+    line-height: 1;
+  }
+  .side-pill.selected .side-check { opacity: 1; }
+
+  .side-label {
+    font-size: 0.58rem;
+    color: rgba(255,248,238,0.28);
+    text-align: center;
+    font-family: 'Sarabun', sans-serif;
+    line-height: 1.4;
+    max-width: 110px;
+  }
+
+  /* ====== CENTER ====== */
+  .container {
+    flex: 1;
+    max-width: 640px;
+    text-align: center;
+    padding: 0 6px;
+  }
+
+  .header { margin-bottom: 20px; }
+
+  .header-badge {
+    display: inline-block;
+    background: var(--red);
+    color: white;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    padding: 5px 16px;
+    border-radius: 20px;
+    margin-bottom: 10px;
+    text-transform: uppercase;
+  }
+
+  h1 {
+    font-size: clamp(1.9rem, 6.5vw, 3rem);
+    font-weight: 900;
+    color: var(--cream);
+    line-height: 1.05;
+    text-shadow: 0 0 38px rgba(255,107,0,0.5);
+  }
+  h1 span { color: var(--orange); display: block; }
+
+  .subtitle {
+    color: rgba(255,248,238,0.5);
+    font-size: 0.92rem;
+    margin-top: 6px;
+    font-family: 'Sarabun', sans-serif;
+  }
+
+  .mode-bar {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    background: rgba(255,248,238,0.05);
+    border: 1px solid rgba(255,248,238,0.1);
+    border-radius: 20px;
+    padding: 5px 14px;
+    margin-top: 10px;
+    font-size: 0.73rem;
+    font-weight: 700;
+    color: rgba(255,248,238,0.45);
+    transition: all 0.3s;
+  }
+  .mode-bar.noveg { border-color: rgba(0,200,83,0.4); color: var(--green); background: rgba(0,200,83,0.08); }
+  .mode-bar.all   { border-color: rgba(0,170,255,0.4); color: var(--blue);  background: rgba(0,170,255,0.08); }
+  .mode-bar.normal{ border-color: rgba(255,107,0,0.3); color: var(--orange); background: rgba(255,107,0,0.06); }
+  .mode-dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; display: inline-block; flex-shrink: 0; }
+
+  /* ====== CARD ====== */
+  .food-card {
+    background: rgba(255,248,238,0.04);
+    border: 1px solid rgba(255,248,238,0.08);
+    border-radius: 24px;
+    padding: 26px 18px;
+    margin-bottom: 22px;
+    min-height: 355px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+    backdrop-filter: blur(10px);
+    transition: border-color 0.3s, box-shadow 0.3s;
+  }
+  .food-card.active {
+    border-color: rgba(255,107,0,0.38);
+    box-shadow: 0 0 55px rgba(232,25,44,0.12);
+  }
+  .food-card::before {
+    content: '';
+    position: absolute;
+    top: -1px; left: -1px; right: -1px;
+    height: 3px;
+    background: linear-gradient(90deg, var(--red), var(--orange), var(--yellow));
+    border-radius: 24px 24px 0 0;
+    opacity: 0;
+    transition: opacity 0.4s;
+  }
+  .food-card.active::before { opacity: 1; }
+
+  /* empty */
+  .empty-state { opacity: 0.38; }
+  .empty-icon { font-size: 3.6rem; margin-bottom: 12px; display: block; animation: float 3s ease-in-out infinite; }
+  @keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-10px)} }
+  .empty-text { color: var(--cream); font-size: 1.05rem; font-weight: 600; }
+  .empty-sub { color: rgba(255,248,238,0.45); font-size: 0.82rem; margin-top: 5px; font-family:'Sarabun',sans-serif; }
+
+  /* slot */
+  .slot-container { display:none; flex-direction:column; align-items:center; gap:3px; width:100%; padding:18px 0; }
+  .slot-item { font-size:1rem; font-weight:700; color:rgba(255,248,238,0.2); line-height:1.6; }
+  .slot-item.highlight { color:var(--orange); font-size:1.4rem; text-shadow:0 0 18px rgba(255,107,0,0.8); }
+
+  /* result */
+  .food-result {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    animation: revealFood 0.5s cubic-bezier(0.34,1.56,0.64,1) forwards;
+  }
+  @keyframes revealFood {
+    from { opacity:0; transform:scale(0.85) translateY(20px); }
+    to   { opacity:1; transform:scale(1) translateY(0); }
+  }
+
+  .food-emoji-box {
+    width: 175px; height: 175px;
+    border-radius: 50%;
+    border: 4px solid var(--orange);
+    box-shadow: 0 0 0 8px rgba(255,107,0,0.1), 0 18px 42px rgba(0,0,0,0.5);
+    margin-bottom: 18px;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    background: rgba(255,107,0,0.08);
+    gap: 6px; padding: 14px; text-align: center;
+    transition: border-color 0.3s, box-shadow 0.3s;
+  }
+  .food-emoji-box.noveg { border-color:var(--green); box-shadow:0 0 0 8px rgba(0,200,83,0.12), 0 18px 42px rgba(0,0,0,0.5); background:rgba(0,200,83,0.06); }
+  .food-emoji-box.all   { border-color:var(--blue);  box-shadow:0 0 0 8px rgba(0,170,255,0.12), 0 18px 42px rgba(0,0,0,0.5); background:rgba(0,170,255,0.06); }
+
+  .big-emoji { font-size: 2.7rem; line-height: 1; }
+  .taunt-text { font-family:'Kanit',sans-serif; font-size:0.63rem; font-weight:700; color:var(--orange); line-height:1.3; }
+  .food-emoji-box.noveg .taunt-text { color:var(--green); }
+  .food-emoji-box.all   .taunt-text { color:var(--blue);  }
+
+  .food-number { font-size:0.7rem; color:var(--orange); font-weight:700; letter-spacing:0.1em; text-transform:uppercase; margin-bottom:4px; }
+  .food-name { font-size:clamp(1.45rem,4vw,1.95rem); font-weight:900; color:var(--cream); text-shadow:0 2px 18px rgba(255,107,0,0.4); margin-bottom:6px; line-height:1.2; }
+  .food-desc { font-family:'Sarabun',sans-serif; color:rgba(255,248,238,0.52); font-size:0.85rem; max-width:290px; line-height:1.5; }
+
+  .food-tags { display:flex; gap:6px; flex-wrap:wrap; justify-content:center; margin-top:10px; }
+  .tag { background:rgba(255,107,0,0.13); border:1px solid rgba(255,107,0,0.28); color:var(--orange); font-size:0.68rem; font-weight:600; padding:3px 10px; border-radius:20px; }
+  .tag.noveg-tag { background:rgba(0,200,83,0.1); border-color:rgba(0,200,83,0.3); color:var(--green); }
+  .tag.all-tag   { background:rgba(0,170,255,0.1); border-color:rgba(0,170,255,0.3); color:var(--blue); }
+
+  /* card spin anim */
+  @keyframes cardSpin { 0%{transform:scale(1)} 30%{transform:scale(0.96) rotate(-1deg)} 70%{transform:scale(0.96) rotate(1deg)} 100%{transform:scale(1)} }
+  .food-card.spinning { animation: cardSpin 0.2s ease-in-out; }
+
+  /* ====== BUTTON ====== */
+  .btn-wrap { position:relative; display:inline-block; }
+  .btn-glow {
+    position:absolute; inset:-8px;
+    background:radial-gradient(ellipse, rgba(232,25,44,0.5) 0%, transparent 70%);
+    border-radius:50px; filter:blur(12px);
+    animation:pulse 2s ease-in-out infinite; pointer-events:none;
+  }
+  .btn-glow.noveg { background:radial-gradient(ellipse, rgba(0,200,83,0.5) 0%, transparent 70%); }
+  .btn-glow.all   { background:radial-gradient(ellipse, rgba(0,170,255,0.5) 0%, transparent 70%); }
+  @keyframes pulse { 0%,100%{opacity:.5;transform:scale(1)} 50%{opacity:1;transform:scale(1.08)} }
+
+  .btn-main {
+    position:relative;
+    background:linear-gradient(135deg, var(--red) 0%, var(--orange) 100%);
+    color:white; border:none;
+    padding:18px 46px;
+    font-family:'Kanit',sans-serif; font-size:1.35rem; font-weight:900;
+    border-radius:60px; cursor:pointer; letter-spacing:0.02em;
+    transition:transform 0.15s, box-shadow 0.15s;
+    box-shadow:0 8px 26px rgba(232,25,44,0.5), 0 2px 0 rgba(255,255,255,0.18) inset;
+    user-select:none; -webkit-tap-highlight-color:transparent;
+  }
+  .btn-main.noveg { background:linear-gradient(135deg,#00A844,#00C853); box-shadow:0 8px 26px rgba(0,200,83,0.45); }
+  .btn-main.all   { background:linear-gradient(135deg,#0077BB,#00AAFF); box-shadow:0 8px 26px rgba(0,170,255,0.45); }
+  .btn-main:hover { transform:translateY(-3px); }
+  .btn-main:active { transform:translateY(1px) scale(0.98); }
+  .btn-main.loading { pointer-events:none; opacity:0.82; }
+  .btn-icon { display:inline-block; margin-right:7px; transition:transform 0.3s; }
+  .btn-main:hover .btn-icon { transform:rotate(20deg) scale(1.2); }
+
+  /* counter */
+  .counter-bar { display:flex; align-items:center; justify-content:center; gap:16px; margin-top:18px; }
+  .counter-item { text-align:center; }
+  .counter-num { font-size:1.45rem; font-weight:900; color:var(--yellow); line-height:1; }
+  .counter-label { font-size:0.65rem; color:rgba(255,248,238,0.38); font-family:'Sarabun',sans-serif; letter-spacing:0.04em; }
+  .divider { width:1px; height:32px; background:rgba(255,248,238,0.1); }
+
+  /* history */
+  .history-section { margin-top:20px; text-align:left; }
+  .history-title { color:rgba(255,248,238,0.32); font-size:0.7rem; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; margin-bottom:9px; padding-left:3px; }
+  .history-list { display:flex; gap:6px; flex-wrap:wrap; }
+  .history-chip { background:rgba(255,248,238,0.04); border:1px solid rgba(255,248,238,0.09); border-radius:20px; padding:4px 10px; font-size:0.76rem; color:rgba(255,248,238,0.42); font-family:'Sarabun',sans-serif; transition:all 0.2s; }
+  .history-chip:hover { background:rgba(255,107,0,0.08); border-color:rgba(255,107,0,0.25); color:var(--orange); }
+
+  /* sparks */
+  @keyframes firework { 0%{opacity:1;transform:scale(0)} 100%{opacity:0;transform:scale(4)} }
+  .spark { position:absolute; width:6px; height:6px; border-radius:50%; pointer-events:none; animation:firework 0.6s ease-out forwards; }
+
+  .footer { margin-top:26px; color:rgba(255,248,238,0.16); font-size:0.7rem; font-family:'Sarabun',sans-serif; }
+
+  @media (max-width:580px) {
+    .outer-wrap { flex-direction:column; align-items:center; padding:16px 10px; }
+    .side-col { flex-direction:row; width:100%; padding-top:0; gap:12px; justify-content:center; order:2; }
+    .container { order:1; width:100%; }
+    .btn-main { padding:15px 34px; font-size:1.2rem; }
+    .food-emoji-box { width:150px; height:150px; }
+  }
+</style>
+</head>
+<body>
+<div class="outer-wrap">
+
+  <!-- LEFT -->
+  <div class="side-col">
+    <div class="side-pill mode-noveg" id="btnNoVeg" onclick="setMode('noveg')">
+      <div class="side-oval">มีแต่เอเลี่ยนและที่แดกผัก</div>
+      <span class="side-check">✅</span>
+      <div class="side-label">สุ่มเมนูไม่มีผักใบเขียว</div>
+    </div>
+  </div>
+
+  <!-- CENTER -->
+  <div class="container">
+    <div class="header">
+      <div class="header-badge">🍳 อาหารตามสั่ง</div>
+      <h1>วันนี้กิน<span>อะไรดี?</span></h1>
+      <p class="subtitle">กด "บอกกุที" แล้วกูจะบอกเอง</p>
+      <div class="mode-bar normal" id="modeBar">
+        <span class="mode-dot"></span>
+        <span id="modeBarText">โหมดปกติ 30 เมนู</span>
+      </div>
+    </div>
+
+    <div class="food-card" id="foodCard">
+      <div class="empty-state" id="emptyState">
+        <span class="empty-icon">🍽️</span>
+        <div class="empty-text">ยังไม่ได้สุ่มอะไรเลย</div>
+        <div class="empty-sub">กดปุ่มด้านล่างเลย!</div>
+      </div>
+      <div class="slot-container" id="slotContainer">
+        <div class="slot-item" id="slot1"></div>
+        <div class="slot-item highlight" id="slot2"></div>
+        <div class="slot-item" id="slot3"></div>
+      </div>
+      <div class="food-result" id="foodResult">
+        <div class="food-emoji-box" id="emojiBox">
+          <div class="big-emoji" id="foodEmoji">🍽️</div>
+          <div class="taunt-text" id="tauntText">แดกสะไอสัดกุคิดให้มึงละ</div>
+        </div>
+        <div class="food-number" id="foodNumber"></div>
+        <div class="food-name" id="foodName"></div>
+        <div class="food-desc" id="foodDesc"></div>
+        <div class="food-tags" id="foodTags"></div>
+      </div>
+    </div>
+
+    <div class="btn-wrap">
+      <div class="btn-glow" id="btnGlow"></div>
+      <button class="btn-main" id="spinBtn" onclick="spinFood()">
+        <span class="btn-icon">🎲</span>บอกกุที
+      </button>
+    </div>
+
+    <div class="counter-bar">
+      <div class="counter-item">
+        <div class="counter-num" id="spinCount">0</div>
+        <div class="counter-label">ครั้งที่กด</div>
+      </div>
+      <div class="divider"></div>
+      <div class="counter-item">
+        <div class="counter-num" id="totalCount">30</div>
+        <div class="counter-label">เมนูในโหมดนี้</div>
+      </div>
+      <div class="divider"></div>
+      <div class="counter-item">
+        <div class="counter-num" id="uniqueCount">0</div>
+        <div class="counter-label">เมนูที่เจอ</div>
+      </div>
+    </div>
+
+    <div class="history-section" id="historySection" style="display:none">
+      <div class="history-title">ประวัติการสุ่ม</div>
+      <div class="history-list" id="historyList"></div>
+    </div>
+
+    <div class="footer">50 เมนูรวม • 3 โหมด • แดกให้อร่อย!</div>
+  </div>
+
+  <!-- RIGHT -->
+  <div class="side-col">
+    <div class="side-pill mode-all" id="btnAll" onclick="setMode('all')">
+      <div class="side-oval">กุแดกได้หมดละ</div>
+      <span class="side-check">✅</span>
+      <div class="side-label">สุ่มทั้งหมด 50 เมนู</div>
+    </div>
+  </div>
+
+</div>
+<script>
+// ===== 30 เมนูปกติ =====
+const normalFoods = [
+  {name:"ข้าวผัดกระเพราหมูสับ", desc:"เมนูขวัญใจมหาชน เผ็ดร้อน หอมกระเพรา ไข่ดาวกรอบ", tags:["เผ็ด","ยอดนิยม"], emoji:"🌶️"},
+  {name:"ข้าวผัดไข่", desc:"คลาสสิคนิรันดร์ ง่าย อร่อย อิ่มท้อง", tags:["ไม่เผ็ด","เด็กทาน"], emoji:"🍳"},
+  {name:"ราดหน้าหมู", desc:"ซอสข้นเข้มข้น ราดบนก๋วยเตี๋ยวเส้นใหญ่", tags:["เส้น","หวานมัน"], emoji:"🥩"},
+  {name:"ผัดซีอิ๊วหมู", desc:"เส้นหมี่เตาถ่าน กลิ่นหอมควัน ซีอิ๊วหวาน", tags:["เส้น","หอมควัน"], emoji:"🥢"},
+  {name:"ข้าวมันไก่", desc:"ไก่ต้มนุ่ม ข้าวมันหอม น้ำจิ้มขิง", tags:["ไม่เผ็ด","เบา"], emoji:"🍗"},
+  {name:"ข้าวหมูแดง", desc:"หมูแดงหวานฉ่ำ ราดน้ำข้น หอมพะโล้", tags:["หวาน","หอม"], emoji:"🐷"},
+  {name:"ต้มยำทะเล", desc:"ต้มยำรสเข้ม เปรี้ยวเผ็ด กุ้ง ปลาหมึก หอยแมลงภู่", tags:["เผ็ด","ทะเล","เปรี้ยว"], emoji:"🦐"},
+  {name:"แกงเขียวหวานไก่", desc:"แกงเขียวหอมกะทิ หวานมัน ใส่มะเขือ", tags:["มัน","เผ็ด","หวาน"], emoji:"🍛"},
+  {name:"ผัดกระเพราไก่ไข่ดาว", desc:"ไก่สับผัดกระเพราร้อนๆ กับไข่ดาวกรอบ", tags:["เผ็ด","ยอดนิยม"], emoji:"🍳"},
+  {name:"ผัดผักรวมมิตร", desc:"ผักสดหลากชนิด ผัดไฟแรง กรอบอร่อย", tags:["ผัก","เบา"], emoji:"🥦"},
+  {name:"ข้าวหน้าเป็ด", desc:"เป็ดพะโล้หอมเครื่องเทศ ราดน้ำข้น", tags:["หวาน","หอม"], emoji:"🦆"},
+  {name:"ผัดเปรี้ยวหวานหมู", desc:"หมูกรอบ พริกหยวก สับปะรด รสเปรี้ยวหวาน", tags:["เปรี้ยวหวาน","ไม่เผ็ด"], emoji:"🍍"},
+  {name:"ต้มข่าไก่", desc:"ต้มข่ากะทิมัน หอมตะไคร้ ใบมะกรูด", tags:["มัน","หอม"], emoji:"🍲"},
+  {name:"ผัดพริกแกงหมู", desc:"พริกแกงแดงเผ็ดจัด ผัดกับหมูและถั่วฝักยาว", tags:["เผ็ดมาก","หอม"], emoji:"🌶️"},
+  {name:"ข้าวผัดกุ้ง", desc:"กุ้งสดตัวโต ผัดข้าวหอมๆ ใส่ไข่และหอม", tags:["ทะเล","หอม"], emoji:"🦐"},
+  {name:"ยำวุ้นเส้น", desc:"วุ้นเส้นเผ็ดเปรี้ยว กุ้ง หมูสับ เห็ด", tags:["เปรี้ยว","เผ็ด"], emoji:"🥗"},
+  {name:"แกงมัสมั่นไก่", desc:"แกงมัสมั่นหอมกะทิ ใส่มันฝรั่ง ถั่วลิสง", tags:["มัน","หวาน","ไม่เผ็ด"], emoji:"🍛"},
+  {name:"ผัดคะน้าหมูกรอบ", desc:"หมูกรอบกรุบ คะน้าผัดไฟแรง น้ำมันหอย", tags:["กรอบ","หอม"], emoji:"🥬"},
+  {name:"ข้าวหน้าไก่", desc:"ไก่ทอดกรอบหรือไก่ผัด ราดซอส", tags:["ยอดนิยม","กรอบ"], emoji:"🍗"},
+  {name:"ต้มจืดเต้าหู้หมูสับ", desc:"ซุปใสหวานธรรมชาติ เต้าหู้นุ่ม แครอท", tags:["เบา","ไม่เผ็ด","ซุป"], emoji:"🥣"},
+  {name:"ผัดฟักทองไข่", desc:"ฟักทองหวาน ผัดกับไข่ กุ้งแห้ง", tags:["หวาน","ไม่เผ็ด"], emoji:"🎃"},
+  {name:"แกงส้มกุ้ง", desc:"แกงส้มเปรี้ยวจัด ใส่ผักรวม กุ้งสด", tags:["เปรี้ยว","เผ็ด","ทะเล"], emoji:"🍜"},
+  {name:"ผัดเผ็ดหมูป่า", desc:"หมูป่าเนื้อแน่น ผัดพริกเผ็ดจัด ใบมะกรูด", tags:["เผ็ดมาก","หอม"], emoji:"🐗"},
+  {name:"ข้าวผัดปู", desc:"ปูเนื้อแน่น ไข่ปู ข้าวผัดหอมมัน", tags:["ทะเล","พรีเมียม"], emoji:"🦀"},
+  {name:"ผัดหมูกับพริกสด", desc:"หมูผัดพริกสดเผ็ดร้อน ใส่ผักบุ้ง", tags:["เผ็ด","หอม"], emoji:"🫑"},
+  {name:"ไข่เจียวหมูสับ", desc:"ไข่เจียวฟูทอดเหลือง หมูสับอร่อย", tags:["ไม่เผ็ด","เร็ว"], emoji:"🍳"},
+  {name:"แกงเลียง", desc:"แกงผักรวม ใส่กุ้งสด รสเผ็ดพริกไทย", tags:["ผัก","เบา"], emoji:"🥬"},
+  {name:"ผัดเต้าหู้ไข่", desc:"เต้าหู้ไข่นุ่ม ผัดซอสหอยนางรม", tags:["ไม่เผ็ด","นุ่ม"], emoji:"🟡"},
+  {name:"ข้าวผัดสับปะรด", desc:"ข้าวผัดหวานนิด ใส่สับปะรด กุ้ง แฮม", tags:["หวาน","หอม","พิเศษ"], emoji:"🍍"},
+  {name:"ผัดบวบไข่", desc:"บวบผัดนุ่ม ไข่สุก น้ำมันหอยรสดี", tags:["ไม่เผ็ด","เบา"], emoji:"🥒"},
+];
+
+// ===== 20 เมนูไม่มีผักใบเขียว =====
+const noVegFoods = [
+  {name:"ข้าวไข่กระทะ", desc:"ไข่ดาวในกระทะร้อน สุกพอดี ราดซอสถั่วเหลือง", tags:["ไม่มีผัก","ไข่"], emoji:"🍳"},
+  {name:"ข้าวหมูทอดกระเทียม", desc:"หมูทอดกรอบ กระเทียมเจียวหอม ซีอิ๊วดำ", tags:["กรอบ","หอม","ไม่มีผัก"], emoji:"🧄"},
+  {name:"ข้าวไก่ทอดน้ำปลา", desc:"ไก่ทอดน้ำปลาหอมหวาน กรอบทั้งชิ้น", tags:["กรอบ","ไม่มีผัก"], emoji:"🍗"},
+  {name:"ข้าวหมูทอดน้ำปลา", desc:"หมูทอดรสน้ำปลาหอม กินกับข้าวร้อนๆ", tags:["กรอบ","ไม่มีผัก"], emoji:"🥩"},
+  {name:"ข้าวลูกชิ้นทอด", desc:"ลูกชิ้นหมูทอดกรอบ ราดซอสพริกหวาน", tags:["กรอบ","หวาน","ไม่มีผัก"], emoji:"🔴"},
+  {name:"ข้าวหมูย่าง", desc:"หมูย่างหอมไฟถ่าน หนังกรอบเนื้อนุ่ม", tags:["ย่าง","หอม","ไม่มีผัก"], emoji:"🥓"},
+  {name:"ข้าวเบคอนไข่ดาว", desc:"เบคอนทอดกรอบคู่ไข่ดาวสด ง่ายแต่อร่อย", tags:["กรอบ","ไข่","ไม่มีผัก"], emoji:"🥚"},
+  {name:"ข้าวหมูสับทอดกระเทียม", desc:"หมูสับผัดกระเทียมพริกไทย หอมฉุน", tags:["หอม","เผ็ดเล็กน้อย"], emoji:"🧄"},
+  {name:"ข้าวไก่ย่างเกาหลี", desc:"ไก่หมักซอสเกาหลีย่างหอม หวานนิดๆ", tags:["หวาน","หอม","ย่าง"], emoji:"🍗"},
+  {name:"ข้าวปลาทอดกระเทียม", desc:"ปลาทอดกรอบ กระเทียมเจียวโรยหน้า", tags:["กรอบ","ทะเล"], emoji:"🐟"},
+  {name:"ข้าวกุ้งทอดกระเทียม", desc:"กุ้งทอดกระเทียมพริกไทย กรอบนอกนุ่มใน", tags:["ทะเล","กรอบ","หอม"], emoji:"🦐"},
+  {name:"ข้าวไข่เจียวหมูแฮม", desc:"ไข่เจียวฟูใส่แฮมหมู ราดซอสหวาน", tags:["ไข่","หวาน","ไม่มีผัก"], emoji:"🍳"},
+  {name:"ข้าวซี่โครงหมูพะโล้", desc:"ซี่โครงหมูพะโล้หอมเครื่อง เนื้อร่วง", tags:["หวาน","หอม","ไม่มีผัก"], emoji:"🍖"},
+  {name:"ข้าวหมูกรอบราดซอส", desc:"หมูสามชั้นทอดกรอบ ราดซอสน้ำตาลเผา", tags:["กรอบ","หวาน"], emoji:"🥩"},
+  {name:"ข้าวปลาหมึกผัดไข่เค็ม", desc:"ปลาหมึกผัดไข่เค็มเข้มข้น มันหอม", tags:["ทะเล","มัน","เค็ม"], emoji:"🦑"},
+  {name:"ข้าวไก่ต้มซีอิ๊ว", desc:"ไก่ต้มในซีอิ๊วดำหอม เนื้อนุ่ม", tags:["หวาน","หอม","ไม่มีผัก"], emoji:"🍗"},
+  {name:"ข้าวปลานึ่งซีอิ๊ว", desc:"ปลานึ่งซีอิ๊วราดน้ำมันร้อน หอมขิง", tags:["ทะเล","ไม่เผ็ด"], emoji:"🐟"},
+  {name:"ข้าวหอยทอด", desc:"หอยนางรมทอดแป้งกรอบ ราดซอสพริก", tags:["ทะเล","กรอบ"], emoji:"🦪"},
+  {name:"ข้าวไก่อบซีอิ๊ว", desc:"ไก่อบซีอิ๊วดำหอมหวาน หนังกรอบ", tags:["หวาน","หอม","อบ"], emoji:"🍗"},
+  {name:"ข้าวหมูกระเทียมดำ", desc:"หมูผัดกระเทียมดำหอมฉุน รสเข้มข้น", tags:["หอม","เข้มข้น","ไม่มีผัก"], emoji:"🧄"},
+];
+
+// ===== STATE =====
+let currentMode = 'normal';
+let spinCount = 0;
+let history = [];
+let uniqueSet = new Set();
+let isSpinning = false;
+let lastIdx = -1;
+
+function getPool() {
+  if (currentMode === 'noveg') return noVegFoods;
+  if (currentMode === 'all') return [...normalFoods, ...noVegFoods];
+  return normalFoods;
+}
+
+function setMode(mode) {
+  currentMode = (currentMode === mode) ? 'normal' : mode;
+  lastIdx = -1;
+  updateModeUI();
+}
+
+function updateModeUI() {
+  document.getElementById('btnNoVeg').classList.toggle('selected', currentMode === 'noveg');
+  document.getElementById('btnAll').classList.toggle('selected', currentMode === 'all');
+
+  const bar = document.getElementById('modeBar');
+  const txt = document.getElementById('modeBarText');
+  bar.className = 'mode-bar';
+  if (currentMode === 'noveg') { bar.classList.add('noveg'); txt.textContent = '🥩 โหมดไม่มีผักใบเขียว 20 เมนู'; }
+  else if (currentMode === 'all') { bar.classList.add('all'); txt.textContent = '🌈 โหมดกุแดกได้หมด 50 เมนู'; }
+  else { bar.classList.add('normal'); txt.textContent = '🍳 โหมดปกติ 30 เมนู'; }
+
+  document.getElementById('totalCount').textContent = getPool().length;
+
+  const btn = document.getElementById('spinBtn');
+  const glow = document.getElementById('btnGlow');
+  btn.className = 'btn-main';
+  glow.className = 'btn-glow';
+  if (currentMode === 'noveg') { btn.classList.add('noveg'); glow.classList.add('noveg'); }
+  else if (currentMode === 'all') { btn.classList.add('all'); glow.classList.add('all'); }
+}
+
+function spinFood() {
+  if (isSpinning) return;
+  const pool = getPool();
+  if (!pool.length) return;
+  isSpinning = true;
+
+  const btn = document.getElementById('spinBtn');
+  btn.classList.add('loading');
+  btn.innerHTML = '<span class="btn-icon">⏳</span>กำลังสุ่ม...';
+
+  document.getElementById('emptyState').style.display = 'none';
+  document.getElementById('foodResult').style.display = 'none';
+  document.getElementById('slotContainer').style.display = 'flex';
+  document.getElementById('foodCard').classList.add('active');
+
+  let ticks = 0;
+  const maxTicks = 18;
+  const iv = setInterval(() => {
+    ticks++;
+    document.getElementById('slot1').textContent = pool[Math.floor(Math.random()*pool.length)].name;
+    document.getElementById('slot2').textContent = pool[Math.floor(Math.random()*pool.length)].name;
+    document.getElementById('slot3').textContent = pool[Math.floor(Math.random()*pool.length)].name;
+    if (ticks >= maxTicks) {
+      clearInterval(iv);
+      let ni;
+      do { ni = Math.floor(Math.random()*pool.length); } while (ni === lastIdx && pool.length > 1);
+      lastIdx = ni;
+      showFood(pool[ni]);
+    }
+  }, 80);
+}
+
+function showFood(food) {
+  spinCount++;
+  uniqueSet.add(food.name);
+  history.unshift(food.name);
+  if (history.length > 8) history.pop();
+
+  document.getElementById('spinCount').textContent = spinCount;
+  document.getElementById('uniqueCount').textContent = uniqueSet.size;
+  document.getElementById('slotContainer').style.display = 'none';
+
+  const eb = document.getElementById('emojiBox');
+  const tt = document.getElementById('tauntText');
+  eb.className = 'food-emoji-box';
+  if (currentMode === 'noveg') { eb.classList.add('noveg'); tt.textContent = 'ไม่มีผัก สบายใจละกู!'; }
+  else if (currentMode === 'all') { eb.classList.add('all'); tt.textContent = 'กุแดกได้หมด บอกแล้ว!'; }
+  else { tt.textContent = 'แดกสะไอสัดกุคิดให้มึงละ'; }
+
+  document.getElementById('foodEmoji').textContent = food.emoji;
+  document.getElementById('foodNumber').textContent = `เมนูที่ ${spinCount} 🎯`;
+  document.getElementById('foodName').textContent = food.name;
+  document.getElementById('foodDesc').textContent = food.desc;
+
+  const tc = currentMode==='noveg'?'tag noveg-tag': currentMode==='all'?'tag all-tag':'tag';
+  document.getElementById('foodTags').innerHTML = food.tags.map(t=>`<span class="${tc}">${t}</span>`).join('');
+
+  const fr = document.getElementById('foodResult');
+  fr.style.display = 'flex';
+  fr.style.animation = 'none';
+  setTimeout(()=>{ fr.style.animation='revealFood 0.5s cubic-bezier(0.34,1.56,0.64,1) forwards'; }, 10);
+
+  createSparks();
+  updateHistory();
+
+  const btn = document.getElementById('spinBtn');
+  btn.classList.remove('loading');
+  btn.innerHTML = '<span class="btn-icon">🎲</span>บอกกุที';
+  isSpinning = false;
+
+  const card = document.getElementById('foodCard');
+  card.classList.add('spinning');
+  setTimeout(()=>card.classList.remove('spinning'), 300);
+}
+
+function createSparks() {
+  const card = document.getElementById('foodCard');
+  const palettes = {
+    normal:['#E8192C','#FF6B00','#FFD000','#FF3366'],
+    noveg:['#00C853','#00E676','#69F0AE','#FFD000'],
+    all:['#00AAFF','#00E5FF','#FF6B00','#FFD000'],
+  };
+  const colors = palettes[currentMode];
+  for (let i=0; i<14; i++) {
+    const s = document.createElement('div');
+    s.className = 'spark';
+    s.style.cssText = `left:${15+Math.random()*70}%;top:${15+Math.random()*70}%;background:${colors[Math.floor(Math.random()*colors.length)]};animation-delay:${Math.random()*0.3}s;`;
+    card.appendChild(s);
+    setTimeout(()=>s.remove(), 900);
+  }
+}
+
+function updateHistory() {
+  document.getElementById('historySection').style.display = 'block';
+  document.getElementById('historyList').innerHTML = history.map(n=>`<div class="history-chip">${n}</div>`).join('');
+}
+</script>
+</body>
+</html>
